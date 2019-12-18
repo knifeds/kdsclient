@@ -47,7 +47,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.kadsp.dsclient.fileprovider"
+            android:authorities="com.knifeds.kdsclient.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
