@@ -1,18 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    android:id="@+id/fullscreen_content"
+    android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
+    android:background="#0099cc"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <WebView
+            android:id="@+id/webView1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_alignParentTop="true"
+            android:layout_centerHorizontal="true" />
+        <TextView
+            android:visibility="gone"
+            android:background="@color/trans_black"
+            android:id="@+id/text_no_license"
+            android:layout_gravity="center_horizontal|center_vertical"
+            android:gravity="center_horizontal|center_vertical"
+            android:text="No License"
+            android:layout_width="90dp"
+            android:layout_height="40dp" />
+        <TextView
+            android:visibility="gone"
+            android:background="@color/trans_black_more"
+            android:id="@+id/text_test_mode"
+            android:layout_gravity="center_horizontal|center_vertical"
+            android:gravity="center_horizontal|center_vertical"
+            android:text="test mode"
+            android:textColor="@color/trans_black_more"
+            android:textSize="60sp"
+            android:layout_width="400dp"
+            android:layout_height="120dp" />
+    </FrameLayout>
 
     <TextView
+        android:id="@+id/text_view_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello World!"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:background="@color/trans_black_more"
+        android:textColor="@color/colorAccent"
+        android:text="@string/status" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <TextView
+        android:visibility="gone"
+        android:id="@+id/text_view_pin"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:background="@color/trans_black_more2"
+        android:textSize="40dp"
+        android:text="Pin: 0000000"/>
+
+    <FrameLayout
+        android:id="@+id/plugin_fragment"
+        android:layout_width="100dp"
+        android:layout_height="100dp" />
+
+</FrameLayout>

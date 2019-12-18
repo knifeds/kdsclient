@@ -1,3 +1,17 @@
 <resources>
-    <string name="app_name">kdsclient</string>
+<string name="app_name">KnifeDS Client</string>
+<string name="status">Waiting for connection...</string>
+<string name="service_name">KnifeDS Service</string>
+<string name="update_dialog_title">Update</string>
+<string name="update_dialog_posit_button">OK</string>
+<string name="update_dialog_nagit_button">Cancel</string>
+<string name="update_apk_exits">Deleting existing update package</string>
+<string name="update_apk_no_exits">Update package not found</string>
+<string name="update_apk_downloading">Downloading</string>
+<string name="update_apk_download_success">Download succeeded</string>
+<string name="update_apk_download_finish">Downloaded</string>
+<string name="update_apk_download_fail">Download failed</string>
+<string name="update_apk_download_wrong">Download error</string>
+<string name="update_apk_download_fail_memory">Insufficient memory</string>
+<string name="update_apk_download_unit">0MB (0%)</string>
 </resources>
