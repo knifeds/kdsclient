@@ -167,6 +167,8 @@ public class MainActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
 
+        Config.loadConfig(this);
+
         dataContext.init(PreferenceManager.getDefaultSharedPreferences(this), getSharedPreferences("app_config", Context.MODE_PRIVATE), getFilesDir());
         dataContext.capabilities = hardwareController.getCapabilities();
 

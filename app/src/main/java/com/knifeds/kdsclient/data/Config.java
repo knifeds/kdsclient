@@ -1,13 +1,14 @@
 package com.knifeds.kdsclient.data;
 
-public class Config {
+import android.content.Context;
 
-    // Default config
-    public static String mqttUrl = "ssl://paas.neods.tech:10001"; // Public MQTT URL secured
-    // FIXME: Must use ip address due to Go lib issue resolving hostname (always use ipv6 DNS)
-    public static String scepServerUrl = "http://47.244.241.96:10004/scep";
-    public static String screenShotPrefix = "https://api.neods.tech/dss/device/uploadImage/";
-    public static String hostedFileBaseUrl = "https://api.neods.tech/scepclient/";
+import com.knifeds.kdsclient.utils.ConfigHelper;
+
+public class Config {
+    public static String mqttUrl = "";
+    public static String scepServerUrl = "";
+    public static String screenShotPrefix = "";
+    public static String hostedFileBaseUrl = "";
 
     public static String envText = "";
     public static boolean changeWwwToStaging = false;
@@ -15,13 +16,28 @@ public class Config {
     public static boolean useScep = false;
     public static boolean loadPlugins = false;
 
-    // Fix values
-    public static final String enrollTopic = "newdevice/enroll";
-    public static final String requestTopicPrefix = "server/device/request/";
-    public static final String responseTopicPrefix = "server/device/response/";
-    public static final String imageUrlPrefix = "https://api.neods.tech"; // Note: no trailing /
-    public static final String scepClientFilename = "scepclient";
-    public static final String mqttCaFilename = "mqtt_ca.crt"; // See: https://gist.github.com/sharonbn/4104301
-    public static final String mqttUsername = "device";
-    public static final String mqttPassword = "Kds1213";
+    public static String enrollTopic = "";
+    public static String requestTopicPrefix = "";
+    public static String responseTopicPrefix = "";
+    public static String imageUrlPrefix = "";
+    public static String scepClientFilename = "";
+    public static String mqttCaFilename = "";
+    public static String mqttUsername = "";
+    public static String mqttPassword = "";
+
+    public static void loadConfig(Context context) {
+        mqttUrl = ConfigHelper.getConfigValue(context, "mqttUrl");
+        scepServerUrl = ConfigHelper.getConfigValue(context, "scepServerUrl");
+        screenShotPrefix = ConfigHelper.getConfigValue(context, "screenShotPrefix");
+        hostedFileBaseUrl = ConfigHelper.getConfigValue(context, "hostedFileBaseUrl");
+
+        enrollTopic = ConfigHelper.getConfigValue(context, "enrollTopic");
+        requestTopicPrefix = ConfigHelper.getConfigValue(context, "requestTopicPrefix");
+        responseTopicPrefix = ConfigHelper.getConfigValue(context, "responseTopicPrefix");
+        imageUrlPrefix = ConfigHelper.getConfigValue(context, "imageUrlPrefix");
+        scepClientFilename = ConfigHelper.getConfigValue(context, "scepClientFilename");
+        mqttCaFilename = ConfigHelper.getConfigValue(context, "mqttCaFilename");
+        mqttUsername = ConfigHelper.getConfigValue(context, "mqttUsername");
+        mqttPassword = ConfigHelper.getConfigValue(context, "mqttPassword");
+    }
 }
