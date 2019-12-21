@@ -1,8 +1,11 @@
 package com.knifeds.kdsclient.data;
 
 import android.content.Context;
+import android.content.Intent;
 
 import com.knifeds.kdsclient.utils.ConfigHelper;
+
+import java.util.List;
 
 public class Config {
     public static String mqttUrl = "";
@@ -25,6 +28,8 @@ public class Config {
     public static String mqttUsername = "";
     public static String mqttPassword = "";
 
+    public static List<ConfigX> configXs = null;
+
     public static void loadConfig(Context context) {
         mqttUrl = ConfigHelper.getConfigValue(context, "mqttUrl");
         scepServerUrl = ConfigHelper.getConfigValue(context, "scepServerUrl");
@@ -39,5 +44,23 @@ public class Config {
         mqttCaFilename = ConfigHelper.getConfigValue(context, "mqttCaFilename");
         mqttUsername = ConfigHelper.getConfigValue(context, "mqttUsername");
         mqttPassword = ConfigHelper.getConfigValue(context, "mqttPassword");
+
+        configXs = ConfigX.loadConfig(context);
+    }
+
+    public static ConfigX getConfigSerivce() {
+        for (ConfigX c: configXs) {
+            if (c.type.equals("config")) return c;
+        }
+        return null;
+    }
+
+    public static void applyConfig(Intent intent) {
+        Config.envText = intent.getStringExtra("envText");
+        Config.mqttUrl = intent.getStringExtra("mqttUrl");
+        Config.scepServerUrl = intent.getStringExtra("scepServerUrl");
+        Config.screenShotPrefix = intent.getStringExtra("screenShotPrefix");
+        Config.hostedFileBaseUrl = intent.getStringExtra("hostedFileBaseUrl");
+        Config.changeWwwToStaging = intent.getBooleanExtra("changeWwwToStaging", false);
     }
 }

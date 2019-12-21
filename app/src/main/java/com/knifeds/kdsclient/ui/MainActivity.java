@@ -6,6 +6,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -15,7 +17,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -27,7 +28,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.telephony.TelephonyManager;
 import android.util.DisplayMetrics;
@@ -41,6 +41,7 @@ import android.widget.TextView;
 
 import com.knifeds.kdsclient.R;
 import com.knifeds.kdsclient.data.Config;
+import com.knifeds.kdsclient.data.ConfigX;
 import com.knifeds.kdsclient.data.Consts;
 import com.knifeds.kdsclient.data.DataContext;
 import com.knifeds.kdsclient.data.Playlist;
@@ -61,6 +62,7 @@ import com.knifeds.kdsclient.upgrade.UpgradeManager;
 import com.knifeds.kdsclient.utils.Commandline;
 import com.knifeds.kdsclient.utils.FileUploader;
 import com.knifeds.kdsclient.utils.FileUtil;
+import com.knifeds.kdsclient.utils.NetworkUtil;
 import com.knifeds.kdsclient.utils.StatusMessage;
 
 import org.eclipse.paho.client.mqttv3.MqttMessage;
@@ -78,6 +80,7 @@ import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 
 import dagger.android.AndroidInjection;
+import dalvik.system.DexClassLoader;
 
 import static com.knifeds.kdsclient.upgrade.UpgradeManager.ACTION_DOWNLOAD;
 import static com.knifeds.kdsclient.upgrade.UpgradeManager.ACTION_DOWNLOAD_UPGRADE;
@@ -167,46 +170,11 @@ public class MainActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
 
-        Config.loadConfig(this);
+        initConfig();
 
         dataContext.init(PreferenceManager.getDefaultSharedPreferences(this), getSharedPreferences("app_config", Context.MODE_PRIVATE), getFilesDir());
         dataContext.capabilities = hardwareController.getCapabilities();
-
 //        dataContext.resetDeviceStateHash(); // Reset device state so that PaaS will always re-push the commands.
-
-        IntentFilter filter = new IntentFilter();
-        filter.addAction("com.kadsp.dstest.SetConfig");
-//        filter.addAction("com.kadsp.dstest.SendCommand");
-
-        configReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (intent.getAction().equals("com.kadsp.dstest.SetConfig")) {
-                    // Logic: 1st time: Config.envText always empty. if incoming text is not empty, switch env.
-                    Log.d(TAG, "onReceive: Got config from DsTest.");
-                    Config.envText = intent.getStringExtra("env");
-                    Config.mqttUrl = intent.getStringExtra("mqttUrl");
-                    Config.scepServerUrl = intent.getStringExtra("scepServerUrl");
-                    Config.screenShotPrefix = intent.getStringExtra("screenShotPrefix");
-                    Config.hostedFileBaseUrl = intent.getStringExtra("hostedFileBaseUrl");
-                    Config.changeWwwToStaging = intent.getBooleanExtra("changeWwwToStaging", false);
-//                    dataContext.setEnv(Config.envText);
-
-                    if (Config.envText.length() > 0) {
-                        testModeText.setText(Config.envText);
-                        testModeText.setVisibility(View.VISIBLE);
-                    } else {
-                        testModeText.setVisibility(View.GONE);
-                    }
-
-                    proceedWithConfig();
-//                } else if (intent.getAction().equals("com.kadsp.dstest.SendCommand")) {
-//                    exitApp();
-                }
-            }
-        };
-
-        registerReceiver(configReceiver, filter);
 
         try {
             UpdateInfo.localVersion = this.getPackageManager().getPackageInfo(this.getPackageName(), 0).versionCode;
@@ -216,26 +184,62 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "onCreate: " + e.getMessage());
         }
 
-        // setRequestedOrientation (ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+//        setRequestedOrientation (ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+
+//        showNoNetwork();
 
         doCreate(savedInstanceState);
+    }
 
-//        if (false && !NetworkUtil.isConnected(this)) {  // Disable network check
-//            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-//            builder.setTitle("No Internet Connection");
-//            builder.setMessage("You need to connect to the Internet.");
-//
-//            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-//                @Override
-//                public void onClick(DialogInterface dialog, int which) {
-//                    finish();
-//                }
-//            });
-//
-//            builder.show();
-//        } else {
+    private void initConfig() {
+        Config.loadConfig(this);
+
+        ConfigX configService = Config.getConfigSerivce();
+        if (configService != null) {
+            configReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    if (intent.getAction().equals(configService.action)) {
+                        // Logic: 1st time: Config.envText always empty. if incoming text is not empty, switch env.
+                        Log.d(TAG, "Got config from ConfigService");
+                        Config.applyConfig(intent);
+//                        dataContext.setEnv(Config.envText);
+
+                        if (Config.envText.length() > 0) {
+                            testModeText.setText(Config.envText);
+                            testModeText.setVisibility(View.VISIBLE);
+                        } else {
+                            testModeText.setVisibility(View.GONE);
+                        }
+
+                        proceedWithConfig();
+                    }
+                }
+            };
+
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(configService.action);
+            registerReceiver(configReceiver, filter);
+        }
+    }
+
+    private void showNoNetwork() {
+        if (!NetworkUtil.isConnected(this)) {  // Disable network check
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("No Internet Connection");
+            builder.setMessage("You need to connect to the Internet.");
+
+            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    finish();
+                }
+            });
+
+            builder.show();
+        } else {
 //            doCreate(savedInstanceState);
-//        }
+        }
     }
 
     private void exitApp() {
@@ -287,43 +291,22 @@ public class MainActivity extends AppCompatActivity {
 //            return false;
 //        }
 
-
         return true;
     }
 
-    private ServiceConnection mConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            int i = 0;
-        }
+    private boolean isConfigServiceInstalled() {
+        ConfigX configService = Config.getConfigSerivce();
+        if (configService == null) return false;
 
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            int i = 0;
-        }
-    };
-
-    private boolean isDsTestInstalled() {
-//        boolean testMode = false;
         boolean isInstalled = false;
         try {
-            Intent i = new Intent("com.kadsp.dstest.START_CONFIG_SERVICE");
-            i.setPackage("com.kadsp.dstest");
+            Intent i = new Intent(configService.serviceName);
+            i.setPackage(configService.packageName);
             ComponentName c = startService(i);
             if (c != null) {
-//                testMode = true;
                 isInstalled = true;
-//                Logger.d("In Test Mode.");
             }
-        } catch (Exception e) {
-            // e.printStackTrace();
-        } finally {
-//            dataContext.setEnv(testMode ? "test" : "prod");
-//            if (testMode) {
-//                testModeText.setVisibility(View.VISIBLE);
-//            } else {
-//                testModeText.setVisibility(View.GONE);
-//            }
+        } catch (Exception ignored) {
         }
         return isInstalled;
     }
@@ -388,18 +371,17 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /*
-    private void loadPluginFragment() {
+    private void loadExtraFragment(ConfigX fragmentConfig) {
         if (!Config.loadPlugins)
             return;
 
-        final String PLUGIN_PACKAGE_NAME = "com.knifeds.arcsoftplugin";
-        final String PLUGIN_FRAGMENT_NAME = "CameraPreviewFragment";
+        final String PLUGIN_PACKAGE_NAME = fragmentConfig.packageName;
+        final String PLUGIN_FRAGMENT_NAME = fragmentConfig.className;
 
         try {
-//            Context ctx = createPackageContext("com.knifeds.plugina", Context.CONTEXT_INCLUDE_CODE | CONTEXT_IGNORE_SECURITY);
+//            Context ctx = createPackageContext(PLUGIN_PACKAGE_NAME, Context.CONTEXT_INCLUDE_CODE | CONTEXT_IGNORE_SECURITY);
 //            ClassLoader cl = ctx.getClassLoader();
-//            Class<?> c = cl.loadClass("com.knifeds.plugina.CameraFragment");
+//            Class<?> c = cl.loadClass(PLUGIN_PACKAGE_NAME + "." + PLUGIN_FRAGMENT_NAME);
 //            Fragment fragObj = (Fragment)c.newInstance();
 
             Class<?> requiredClass = null;
@@ -426,46 +408,60 @@ public class MainActivity extends AppCompatActivity {
 
             if (null != requiredClass) {
                 // Try to cast to required interface to ensure that it's can be cast
-                final FragmentProvider provider = FragmentProvider.class.cast(requiredClass.newInstance());
-
-                if (null != provider) {
-                    final Fragment fragment = provider.getFragment();
-
-                    if (null != fragment) {
-                        Log.d(TAG, "onCreate: ");
-                        final FragmentTransaction trans = getSupportFragmentManager().beginTransaction();
-
-                        trans.add(R.id.plugin_fragment, fragment, PLUGIN_FRAGMENT_NAME).commit();
-                    }
-                }
+//                final FragmentProvider provider = FragmentProvider.class.cast(requiredClass.newInstance());
+//
+//                if (null != provider) {
+//                    final Fragment fragment = provider.getFragment();
+//
+//                    if (null != fragment) {
+//                        Log.d(TAG, "onCreate: ");
+//                        final FragmentTransaction trans = getSupportFragmentManager().beginTransaction();
+//
+//                        trans.add(R.id.plugin_fragment, fragment, PLUGIN_FRAGMENT_NAME).commit();
+//                    }
+//                }
             }
         } catch (PackageManager.NameNotFoundException e) {
             e.printStackTrace();
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
         }
-
-    }*/
+//        catch (InstantiationException e) {
+//            e.printStackTrace();
+//        } catch (IllegalAccessException e) {
+//            e.printStackTrace();
+//        }
+    }
 
     private void proceedWithPermissions() {
-        if (isDsTestInstalled()) {
-            Log.d(TAG, "proceedWithPermissions: Waiting for broadcast of 'com.kadsp.dstest.SetConfig'");
+        if (isConfigServiceInstalled()) {
+            Log.d(TAG, "proceedWithPermissions: Waiting for broadcast of ConfigService...");
         } else {
             proceedWithConfig();
         }
     }
 
     private void startExtraActivities() {
-        try {
-            Intent intent = new Intent();
-            intent.setClassName("com.knifeds.arcsoftplugin", "com.knifeds.arcsoftplugin.ArcSoftPluginActivity");
-            startActivity(intent);
-        } catch (Exception e) {
+        for (ConfigX configX: Config.configXs) {
+            if (configX.type.equals("activity")) {
+                try {
+                    Intent intent = new Intent();
+                    intent.setClassName(configX.packageName, configX.className);
+                    startActivity(intent);
+                } catch (Exception e) {
+                }
+            }
+        }
+    }
 
+    private void loadExtraFragments() {
+        for (ConfigX configX: Config.configXs) {
+            if (configX.type.equals("activity")) {
+                try {
+                    loadExtraFragment(configX);
+                } catch (Exception e) {
+                }
+            }
         }
     }
 
@@ -474,7 +470,7 @@ public class MainActivity extends AppCompatActivity {
 
         setupLocationManager();
 
-//        loadPluginFragment();
+        loadExtraFragments();
 
         if (dataContext.hasSavedDeviceUuid()) {
             startClient();
@@ -909,7 +905,6 @@ public class MainActivity extends AppCompatActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-//                try {
                 sendingEnrollMessage = false;
                 shouldSendHeartbeat = false;
                 if (enrollFuture != null) {
@@ -918,11 +913,10 @@ public class MainActivity extends AppCompatActivity {
                 if (enrollScheduler != null) {
                     enrollScheduler.shutdown();
                 }
-                //MqttManager.getInstance().disConnect();
-                //Logger.d("isConnected: " + false);
+//                try {
+//                    MqttManager.getInstance().disConnect();
 //                }
 //                catch (MqttException e) {
-//                    Logger.d("Unable to disconnect: " + e.getMessage());
 //                }
             }
         }).start();
@@ -1063,7 +1057,7 @@ public class MainActivity extends AppCompatActivity {
         String heartbeatMessage = ServerMessage.assembleHeartbeatMessage(dataContext);
         boolean b = mqttManager.publish(Config.requestTopicPrefix + dataContext.getDeviceUuid(), 2, heartbeatMessage.getBytes());
         Log.d(TAG, "sendHeartbeat: sending heartbeat to server: " + b);
-        Log.i("dclient", heartbeatMessage);
+        Log.i(TAG, heartbeatMessage);
     }
 
     private void sendOutOfBandHeartbeat() {
